@@ -18,6 +18,10 @@ import re
 import textwrap
 from xml.dom import minidom, Node
 
+def LogStr(str):
+    print(str)
+    return str + "\n"
+
 def transformDocs(doc):
     # join lines, unless it is an empty line
     # remove doxygen layout constructs
@@ -113,30 +117,37 @@ def collectValues(node):
 
 
 def addValues(var, node):
+    retStr = ""
     for n in node.childNodes:
         if (n.nodeName == "value"):
             if n.nodeType == Node.ELEMENT_NODE:
                 name = n.getAttribute('name')
-                print("  %s->addValue(\"%s\");" % (var, name))
+                retStr += LogStr("  %s->addValue(\"%s\");" % (var, name))
+    return retStr
 
 
 def parseHeader(node,objName):
     doc = ""
+    retStr = ""
     for n in node.childNodes:
         if n.nodeType == Node.ELEMENT_NODE:
             if (n.nodeName == "docs"):
                 if (n.getAttribute('doxyfile') != "0"):
                     doc += parseDocs(n)
     docC = transformDocs(doc)
-    print("  %s->setHeader(" % (objName))
+    #retStr 
+    retStr += LogStr("  %s->setHeader(" % (objName))
     rng = len(docC)
     for i in range(rng):
         line = docC[i]
         if i != rng - 1:  # since we go from 0 to rng-1
-            print("              \"%s\\n\"" % (line))
+          tempStr = LogStr("              \"%s\\n\"" % (line))
         else:
-            print("              \"%s\"" % (line))
-    print("             );")
+            tempStr = LogStr("              \"%s\"" % (line))
+        retStr += tempStr
+    
+    retStr += LogStr("             );")
+    return retStr
 
 
 def prepCDocs(node):
@@ -242,10 +253,11 @@ def parseOption(node):
     depends = node.getAttribute('depends')
     setting = node.getAttribute('setting')
     orgtype = node.getAttribute('orgtype')
+    retStr = ""
     docC = prepCDocs(node);
     if len(setting) > 0:
-        print("#if %s" % (setting))
-    print("  //----")
+        retStr += LogStr("#if %s" % (setting))
+    retStr += LogStr("  //----")
     if type == 'bool':
         if len(adefval) > 0:
             enabled = adefval
@@ -253,120 +265,124 @@ def parseOption(node):
             enabled = "TRUE"
         else:
             enabled = "FALSE"
-        print("  cb = cfg->addBool(")
-        print("             \"%s\"," % (name))
+        retStr += LogStr("  cb = cfg->addBool(")
+        retStr += LogStr("             \"%s\"," % (name))
         rng = len(docC)
         for i in range(rng):
             line = docC[i]
             if i != rng - 1:  # since we go from 0 to rng-1
-                print("              \"%s\\n\"" % (line))
+                retStr += LogStr("              \"%s\\n\"" % (line))
             else:
-                print("              \"%s\"," % (line))
-        print("              %s" % (enabled))
-        print("             );")
+                retStr += LogStr("              \"%s\"," % (line))
+        retStr += LogStr("              %s" % (enabled))
+        retStr += LogStr("             );")
         if depends != '':
-            print("  cb->addDependency(\"%s\");" % (depends))
+            retStr += LogStr("  cb->addDependency(\"%s\");" % (depends))
     elif type == 'string':
-        print("  cs = cfg->addString(")
-        print("              \"%s\"," % (name))
+        retStr += LogStr("  cs = cfg->addString(")
+        retStr += LogStr("              \"%s\"," % (name))
         rng = len(docC)
         for i in range(rng):
             line = docC[i]
             if i != rng - 1:  # since we go from 0 to rng-1
-                print("              \"%s\\n\"" % (line))
+                retStr += LogStr("              \"%s\\n\"" % (line))
             else:
-                print("              \"%s\"" % (line))
-        print("             );")
+                retStr += LogStr("              \"%s\"" % (line))
+        retStr += LogStr("             );")
         if defval != '':
-            print("  cs->setDefaultValue(\"%s\");" % (defval.replace('\\','\\\\')))
+            retStr += LogStr("  cs->setDefaultValue(\"%s\");" % (defval.replace('\\','\\\\')))
         if format == 'file':
-            print("  cs->setWidgetType(ConfigString::File);")
+            retStr += LogStr("  cs->setWidgetType(ConfigString::File);")
         elif format == 'image':
-            print("  cs->setWidgetType(ConfigString::Image);")
+            retStr += LogStr("  cs->setWidgetType(ConfigString::Image);")
         elif format == 'dir':
-            print("  cs->setWidgetType(ConfigString::Dir);")
+            retStr += LogStr("  cs->setWidgetType(ConfigString::Dir);")
         elif format == 'filedir':
-            print("  cs->setWidgetType(ConfigString::FileAndDir);")
+            retStr += LogStr("  cs->setWidgetType(ConfigString::FileAndDir);")
         if depends != '':
-            print("  cs->addDependency(\"%s\");" % (depends))
+            retStr += LogStr("  cs->addDependency(\"%s\");" % (depends))
     elif type == 'enum':
-        print("  ce = cfg->addEnum(")
-        print("              \"%s\"," % (name))
+        retStr += LogStr("  ce = cfg->addEnum(")
+        retStr += LogStr("              \"%s\"," % (name))
         rng = len(docC)
         for i in range(rng):
             line = docC[i]
             if i != rng - 1:  # since we go from 0 to rng-1
-                print("              \"%s\\n\"" % (line))
+                retStr += LogStr("              \"%s\\n\"" % (line))
             else:
-                print("              \"%s\"," % (line))
-        print("              \"%s\"" % (defval))
-        print("             );")
-        addValues("ce", node)
+                retStr += LogStr("              \"%s\"," % (line))
+        retStr += LogStr("              \"%s\"" % (defval))
+        retStr += LogStr("             );")
+        retStr += addValues("ce", node)
         if depends != '':
-            print("  ce->addDependency(\"%s\");" % (depends))
+            retStr += LogStr("  ce->addDependency(\"%s\");" % (depends))
     elif type == 'int':
         minval = node.getAttribute('minval')
         maxval = node.getAttribute('maxval')
-        print("  ci = cfg->addInt(")
-        print("              \"%s\"," % (name))
+        retStr += LogStr("  ci = cfg->addInt(")
+        retStr += LogStr("              \"%s\"," % (name))
         rng = len(docC)
         for i in range(rng):
             line = docC[i]
             if i != rng - 1:  # since we go from 0 to rng-1
-                print("              \"%s\\n\"" % (line))
+                retStr += LogStr("              \"%s\\n\"" % (line))
             else:
-                print("              \"%s\"," % (line))
-        print("              %s,%s,%s" % (minval, maxval, defval))
-        print("             );")
+                retStr += LogStr("              \"%s\"," % (line))
+        retStr += LogStr("              %s,%s,%s" % (minval, maxval, defval))
+        retStr += LogStr("             );")
         if depends != '':
-            print("  ci->addDependency(\"%s\");" % (depends))
+            retStr += LogStr("  ci->addDependency(\"%s\");" % (depends))
     elif type == 'list':
-        print("  cl = cfg->addList(")
-        print("              \"%s\"," % (name))
+        retStr += LogStr("  cl = cfg->addList(")
+        retStr += LogStr("              \"%s\"," % (name))
         rng = len(docC)
         for i in range(rng):
             line = docC[i]
             if i != rng - 1:  # since we go from 0 to rng-1
-                print("              \"%s\\n\"" % (line))
+                retStr += LogStr("              \"%s\\n\"" % (line))
             else:
-                print("              \"%s\"" % (line))
-        print("             );")
-        addValues("cl", node)
+                retStr += LogStr("              \"%s\"" % (line))
+        retStr += LogStr("             );")
+        retStr += addValues("cl", node)
         if depends != '':
-            print("  cl->addDependency(\"%s\");" % (depends))
+            retStr += LogStr("  cl->addDependency(\"%s\");" % (depends))
         if format == 'file':
-            print("  cl->setWidgetType(ConfigList::File);")
+            retStr += LogStr("  cl->setWidgetType(ConfigList::File);")
         elif format == 'dir':
-            print("  cl->setWidgetType(ConfigList::Dir);")
+            retStr += LogStr("  cl->setWidgetType(ConfigList::Dir);")
         elif format == 'filedir':
-            print("  cl->setWidgetType(ConfigList::FileAndDir);")
+            retStr += LogStr("  cl->setWidgetType(ConfigList::FileAndDir);")
     elif type == 'obsolete':
-        print("  cfg->addObsolete(\"%s\",ConfigOption::O_%s);" % (name,orgtype.capitalize()))
+        retStr += LogStr("  cfg->addObsolete(\"%s\",ConfigOption::O_%s);" % (name,orgtype.capitalize()))
     if len(setting) > 0:
-        print("#else")
-        print("  cfg->addDisabled(\"%s\");" % (name))
-        print("#endif")
+        retStr += LogStr("#else")
+        retStr += LogStr("  cfg->addDisabled(\"%s\");" % (name))
+        retStr += LogStr("#endif")
+    return retStr
 
 
 def parseGroups(node):
     name = node.getAttribute('name')
     doc = node.getAttribute('docs')
     setting = node.getAttribute('setting')
+    retStr = ""
     if len(setting) > 0:
-        print("#if %s" % (setting))
-    print("%s%s" % ("  //-----------------------------------------",
+        retStr += LogStr("#if %s" % (setting))
+    retStr += LogStr("%s%s" % ("  //-----------------------------------------",
                     "----------------------------------"))
-    print("  cfg->addInfo(\"%s\",\"%s\");" % (name, doc))
-    print("%s%s" % ("  //-----------------------------------------",
+    retStr += LogStr("  cfg->addInfo(\"%s\",\"%s\");" % (name, doc))
+    retStr += LogStr("%s%s" % ("  //-----------------------------------------",
                     "----------------------------------"))
     if len(setting) > 0:
-        print("#endif")
-    print("")
+        retStr += LogStr("#endif")
+    retStr += LogStr("")
     for n in node.childNodes:
         if n.nodeType == Node.ELEMENT_NODE:
-            parseOption(n)
+            retStr += LogStr(parseOption(n))
+    return retStr
 
 def parseGroupMapEnums(node):
+    retStr = ""
     def escape(value):
         return re.sub(r'[^\w]','_',value)
     for n in node.childNodes:
@@ -375,133 +391,147 @@ def parseGroupMapEnums(node):
             name   = n.getAttribute('id')
             defval = n.getAttribute('defval')
             if type=='enum':
-                print("\nenum class %s_t" % (name))
-                print("{")
+                retStr += LogStr("\nenum class %s_t" % (name))
+                retStr += LogStr("{")
                 for nv in n.childNodes:
                     if nv.nodeName == "value":
                         value = nv.getAttribute('name')
                         if value:
-                            print("  %s," % (escape(value)))
-                print("};\n")
-                print("inline {0}_t {1}_str2enum(const QCString &s)".format(name,name))
-                print("{")
-                print("  QCString lc = s.lower();")
-                print("  static const std::unordered_map<std::string,{0}_t> map =".format(name))
-                print("  {")
+                            retStr += LogStr("  %s," % (escape(value)))
+                retStr += LogStr("};\n")
+                retStr += LogStr("inline {0}_t {1}_str2enum(const QCString &s)".format(name,name))
+                retStr += LogStr("{")
+                retStr += LogStr("  QCString lc = s.lower();")
+                retStr += LogStr("  static const std::unordered_map<std::string,{0}_t> map =".format(name))
+                retStr += LogStr("  {")
                 for nv in n.childNodes:
                     if nv.nodeName == "value":
                         value = nv.getAttribute('name')
                         if value:
-                            print("    {{ \"{0}\", {1}_t::{2} }},".format(value.lower(),name,escape(value)))
-                print("  };")
-                print("  auto it = map.find(lc.str());")
-                print("  return it!=map.end() ? it->second : {0}_t::{1};".format(name,escape(defval)))
-                print("}\n")
-                print("inline QCString {0}_enum2str({1}_t v)".format(name,name))
-                print("{")
-                print("  switch(v)")
-                print("  {")
+                            retStr += LogStr("    {{ \"{0}\", {1}_t::{2} }},".format(value.lower(),name,escape(value)))
+                retStr += LogStr("  };")
+                retStr += LogStr("  auto it = map.find(lc.str());")
+                retStr += LogStr("  return it!=map.end() ? it->second : {0}_t::{1};".format(name,escape(defval)))
+                retStr += LogStr("}\n")
+                retStr += LogStr("inline QCString {0}_enum2str({1}_t v)".format(name,name))
+                retStr += LogStr("{")
+                retStr += LogStr("  switch(v)")
+                retStr += LogStr("  {")
                 for nv in n.childNodes:
                     if nv.nodeName == "value":
                         value = nv.getAttribute('name')
                         if value:
-                            print("    case {0}_t::{1}: return \"{2}\";".format(name,escape(value),value))
-                print("  }")
-                print("  return \"{0}\";".format(defval))
-                print("}")
+                            retStr += LogStr("    case {0}_t::{1}: return \"{2}\";".format(name,escape(value),value))
+                retStr += LogStr("  }")
+                retStr += LogStr("  return \"{0}\";".format(defval))
+                retStr += LogStr("}")
+    return retStr
+
 
 def parseGroupMapGetter(node):
+    retStr = ""
     map = { 'bool':'bool', 'string':'const QCString &', 'int':'int', 'list':'const StringVector &' }
     for n in node.childNodes:
         if n.nodeType == Node.ELEMENT_NODE:
             setting = n.getAttribute('setting')
             if len(setting) > 0:
-                print("#if %s" % (setting))
+                retStr += LogStr("#if %s" % (setting))
             type = n.getAttribute('type')
             name = n.getAttribute('id')
             if type=='enum':
-                print("    %-22s %-30s const                  { return %s(m_%s); }" % (name+'_t',name+'()',name+'_str2enum',name))
-                print("    %-22s %-30s const                  { return m_%s; }" % ('const QCString &',name+'_str()',name))
+                retStr += LogStr("    %-22s %-30s const                  { return %s(m_%s); }" % (name+'_t',name+'()',name+'_str2enum',name))
+                retStr += LogStr("    %-22s %-30s const                  { return m_%s; }" % ('const QCString &',name+'_str()',name))
             elif type in map:
-                print("    %-22s %-30s const                  { return m_%s; }" % (map[type],name+'()',name))
+                retStr += LogStr("    %-22s %-30s const                  { return m_%s; }" % (map[type],name+'()',name))
             if len(setting) > 0:
-                print("#endif")
+                retStr += LogStr("#endif")
+    return retStr
 
 def parseGroupMapSetter(node):
+    retStr = ""
     map = { 'bool':'bool', 'string':'const QCString &', 'int':'int', 'list':'const StringVector &' }
     for n in node.childNodes:
         if n.nodeType == Node.ELEMENT_NODE:
             setting = n.getAttribute('setting')
             if len(setting) > 0:
-                print("#if %s" % (setting))
+                retStr += LogStr("#if %s" % (setting))
             type = n.getAttribute('type')
             name = n.getAttribute('id')
             if type=='enum':
-                print("    %-22s update_%-46s { m_%s = %s(v); return v; }" % (name+'_t',name+'('+name+'_t '+' v)',name,name+'_enum2str'))
+                retStr += LogStr("    %-22s update_%-46s { m_%s = %s(v); return v; }" % (name+'_t',name+'('+name+'_t '+' v)',name,name+'_enum2str'))
             elif type in map:
-                print("    %-22s update_%-46s { m_%s = v; return m_%s; }" % (map[type],name+'('+map[type]+' v)',name,name))
+                retStr += LogStr("    %-22s update_%-46s { m_%s = v; return m_%s; }" % (map[type],name+'('+map[type]+' v)',name,name))
             if len(setting) > 0:
-                print("#endif")
+                retStr += LogStr("#endif")
+    return retStr
 
 def parseGroupMapVar(node):
+    retStr = ""
     map = { 'bool':'bool', 'string':'QCString', 'enum':'QCString', 'int':'int', 'list':'StringVector' }
     for n in node.childNodes:
         if n.nodeType == Node.ELEMENT_NODE:
             setting = n.getAttribute('setting')
             if len(setting) > 0:
-                print("#if %s" % (setting))
+                retStr += LogStr("#if %s" % (setting))
             type = n.getAttribute('type')
             name = n.getAttribute('id')
             if type in map:
-                print("    %-12s m_%s;" % (map[type],name))
+                retStr += LogStr("    %-12s m_%s;" % (map[type],name))
             if len(setting) > 0:
-                print("#endif")
+                retStr += LogStr("#endif")
+    return retStr
 
 def parseGroupInit(node):
+    retStr = ""
     map = { 'bool':'Bool', 'string':'String', 'enum':'Enum', 'int':'Int', 'list':'List' }
     for n in node.childNodes:
         if n.nodeType == Node.ELEMENT_NODE:
             setting = n.getAttribute('setting')
             if len(setting) > 0:
-                print("#if %s" % (setting))
+                retStr += LogStr("#if %s" % (setting))
             type = n.getAttribute('type')
             name = n.getAttribute('id')
             if type in map:
-                print("  %-25s = ConfigImpl::instance()->get%s(__FILE__,__LINE__,\"%s\");" % ('m_'+name,map[type],name))
+                retStr += LogStr("  %-25s = ConfigImpl::instance()->get%s(__FILE__,__LINE__,\"%s\");" % ('m_'+name,map[type],name))
             if len(setting) > 0:
-                print("#endif")
+                retStr += LogStr("#endif")
+    return retStr
 
 def parseGroupMapInit(node):
+    retStr = ""
     map = { 'bool':'Bool', 'string':'String', 'enum':'String', 'int':'Int', 'list':'List' }
     for n in node.childNodes:
         if n.nodeType == Node.ELEMENT_NODE:
             setting = n.getAttribute('setting')
             if len(setting) > 0:
-                print("#if %s" % (setting))
+                retStr += LogStr("#if %s" % (setting))
             type = n.getAttribute('type')
             name = n.getAttribute('id')
             if type in map:
-                print("    { %-25s Info{ %-13s &ConfigValues::m_%s }}," % ('\"'+name+'\",','Info::'+map[type]+',',name))
+                retStr += LogStr("    { %-25s Info{ %-13s &ConfigValues::m_%s }}," % ('\"'+name+'\",','Info::'+map[type]+',',name))
             if len(setting) > 0:
-                print("#endif")
+                retStr += LogStr("#endif")
+    return retStr
 
 def parseGroupCDocs(node):
+    retStr = ""
     for n in node.childNodes:
         if n.nodeType == Node.ELEMENT_NODE:
             type = n.getAttribute('type')
             name = n.getAttribute('id')
             docC = prepCDocs(n);
             if type != 'obsolete':
-                print("  doc->add(")
-                print("              \"%s\"," % (name))
+                retStr += LogStr("  doc->add(")
+                retStr += LogStr("              \"%s\"," % (name))
                 rng = len(docC)
                 for i in range(rng):
                     line = docC[i]
                     if i != rng - 1:  # since we go from 0 to rng-1
-                        print("              \"%s\\n\"" % (line))
+                        retStr += LogStr("              \"%s\\n\"" % (line))
                     else:
-                        print("              \"%s\"" % (line))
-                print("          );")
+                        retStr += LogStr("              \"%s\"" % (line))
+                retStr += LogStr("          );")
+    return retStr
 
 def parseOptionDoc(node, first):
     # Handling part for documentation
@@ -520,52 +550,52 @@ def parseOptionDoc(node, first):
                     if n.nodeType == Node.ELEMENT_NODE:
                         doc += parseDocs(n)
         if (first):
-            print(" \\anchor cfg_%s" % (name.lower()))
-            print("<dl>")
-            print("")
-            print("<dt>\\c %s <dd>" % (name))
+            LogStr(" \\anchor cfg_%s" % (name.lower()))
+            LogStr("<dl>")
+            LogStr("")
+            LogStr("<dt>\\c %s <dd>" % (name))
         else:
-            print(" \\anchor cfg_%s" % (name.lower()))
-            print("<dt>\\c %s <dd>" % (name))
-        print(" \\addindex %s" % (name))
-        print(doc)
+            LogStr(" \\anchor cfg_%s" % (name.lower()))
+            LogStr("<dt>\\c %s <dd>" % (name))
+        LogStr(" \\addindex %s" % (name))
+        LogStr(doc)
         if (type == 'enum'):
             values = collectValues(node)
-            print("")
-            print("Possible values are: ")
+            LogStr("")
+            LogStr("Possible values are: ")
             rng = len(values)
             for i in range(rng):
                 val = values[i]
                 if i == rng - 2:
-                    print("%s and " % (val))
+                    LogStr("%s and " % (val))
                 elif i == rng - 1:
-                    print("%s." % (val))
+                    LogStr("%s." % (val))
                 else:
-                    print("%s, " % (val))
+                    LogStr("%s, " % (val))
             if (defval != ""):
-                print("")
-                print("")
-                print("The default value is: <code>%s</code>." % (defval))
-            print("")
+                LogStr("")
+                LogStr("")
+                LogStr("The default value is: <code>%s</code>." % (defval))
+            LogStr("")
         elif (type == 'int'):
             minval = node.getAttribute('minval')
             maxval = node.getAttribute('maxval')
-            print("")
-            print("")
-            print("%s: %s%s%s, %s: %s%s%s, %s: %s%s%s." % (
+            LogStr("")
+            LogStr("")
+            LogStr("%s: %s%s%s, %s: %s%s%s, %s: %s%s%s." % (
                      " Minimum value", "<code>", minval, "</code>", 
                      "maximum value", "<code>", maxval, "</code>",
                      "default value", "<code>", defval, "</code>"))
-            print("")
+            LogStr("")
         elif (type == 'bool'):
-            print("")
-            print("")
+            LogStr("")
+            LogStr("")
             if (node.hasAttribute('altdefval')):
-                print("The default value is: system dependent.")
+                LogStr("The default value is: system dependent.")
             else:
-                print("The default value is: <code>%s</code>." % (
+                LogStr("The default value is: <code>%s</code>." % (
                     "YES" if (defval == "1") else "NO"))
-            print("")
+            LogStr("")
         elif (type == 'list'):
             if format == 'string':
                 values = collectValues(node)
@@ -573,77 +603,79 @@ def parseOptionDoc(node, first):
                 for i in range(rng):
                     val = values[i]
                     if i == rng - 2:
-                        print("%s and " % (val))
+                        LogStr("%s and " % (val))
                     elif i == rng - 1:
-                        print("%s." % (val))
+                        LogStr("%s." % (val))
                     else:
-                        print("%s, " % (val))
-            print("")
+                        LogStr("%s, " % (val))
+            LogStr("")
         elif (type == 'string'):
             if format == 'dir':
                 if defval != '':
-                    print("")
-                    print("The default directory is: <code>%s</code>." % (
+                    LogStr("")
+                    LogStr("The default directory is: <code>%s</code>." % (
                         defval))
             elif format == 'file':
                 abspath = node.getAttribute('abspath')
                 if defval != '':
-                    print("")
+                    LogStr("")
                     if abspath != '1':
-                        print("The default file is: <code>%s</code>." % (
+                        LogStr("The default file is: <code>%s</code>." % (
                             defval))
                     else:
-                        print("%s: %s%s%s." % (
+                        LogStr("%s: %s%s%s." % (
                             "The default file (with absolute path) is",
                             "<code>",defval,"</code>"))
                 else:
                     if abspath == '1':
-                        print("")
-                        print("The file has to be specified with full path.")
+                        LogStr("")
+                        LogStr("The file has to be specified with full path.")
             elif format =='image':
                 abspath = node.getAttribute('abspath')
                 if defval != '':
-                    print("")
+                    LogStr("")
                     if abspath != '1':
-                        print("The default image is: <code>%s</code>." % (
+                        LogStr("The default image is: <code>%s</code>." % (
                             defval))
                     else:
-                        print("%s: %s%s%s." % (
+                        LogStr("%s: %s%s%s." % (
                             "The default image (with absolute path) is",
                             "<code>",defval,"</code>"))
                 else:
                     if abspath == '1':
-                        print("")
-                        print("The image has to be specified with full path.")
+                        LogStr("")
+                        LogStr("The image has to be specified with full path.")
             else: # format == 'string':
                 if defval != '':
-                    print("")
-                    print("The default value is: <code>%s</code>." % (
+                    LogStr("")
+                    LogStr("The default value is: <code>%s</code>." % (
                         defval.replace('\\','\\\\')))
-            print("")
+            LogStr("")
         # depends handling
         if (node.hasAttribute('depends')):
             depends = node.getAttribute('depends')
-            print("")
-            print("%s \\ref cfg_%s \"%s\" is set to \\c YES." % (
+            LogStr("")
+            LogStr("%s \\ref cfg_%s \"%s\" is set to \\c YES." % (
                 "This tag requires that the tag", depends.lower(), depends.upper()))
         return False
 
 
 def parseGroupsDoc(node):
+    retStr = ""
     name = node.getAttribute('name')
     doc = node.getAttribute('docs')
-    print("\section config_%s %s" % (name.lower(), doc))
+    retStr += LogStr("\section config_%s %s" % (name.lower(), doc))
     # Start of list has been moved to the first option for better
     # anchor placement
-    #  print "<dl>"
-    #  print ""
+    #  LogStr "<dl>"
+    #  LogStr ""
     first = True
     for n in node.childNodes:
         if n.nodeType == Node.ELEMENT_NODE:
             first = parseOptionDoc(n, first)
     if (not first):
-        print("</dl>")
+        retStr += LogStr("</dl>")
+    return retStr
 
 
 def parseGroupsList(node, commandsList):
@@ -674,7 +706,8 @@ def parseHeaderDoc(node):
             if (n.nodeName == "docs"):
                 if (n.getAttribute('documentation') != "0"):
                     doc += parseDocs(n)
-    print(doc)
+    LogStr(doc)
+    return doc
 
 
 def parseFooterDoc(node):
@@ -684,7 +717,7 @@ def parseFooterDoc(node):
             if (n.nodeName == "docs"):
                 if (n.getAttribute('documentation') != "0"):
                     doc += parseDocs(n)
-    print(doc)
+    return LogStr(doc)
 
 
 def main():
@@ -694,139 +727,144 @@ def main():
         doc = xml.dom.minidom.parse(sys.argv[2])
     except Exception as inst:
         sys.stdout = sys.stderr
-        print("")
-        print(inst)
-        print("")
+        LogStr("")
+        LogStr(inst)
+        LogStr("")
         sys.exit(1)
     elem = doc.documentElement
     if (sys.argv[1] == "-doc"):
-        print("/* WARNING: This file is generated!")
-        print(" * Do not edit this file, but edit config.xml instead and run")
-        print(" * python configgen.py -doc config.xml to regenerate this file!")
-        print(" */")
+        f = open("doc.txt", "w")
+        f.write(LogStr("/* WARNING: This file is generated!"))
+        f.write(LogStr(" * Do not edit this file, but edit config.xml instead and run"))
+        f.write(LogStr(" * python configgen.py -doc config.xml to regenerate this file!"))
+        f.write(LogStr(" */"))
         # process header
         for n in elem.childNodes:
             if n.nodeType == Node.ELEMENT_NODE:
                 if (n.nodeName == "header"):
-                    parseHeaderDoc(n)
+                    f.write(parseHeaderDoc(n))
         # generate list with all commands
         commandsList = ()
         for n in elem.childNodes:
             if n.nodeType == Node.ELEMENT_NODE:
                 if (n.nodeName == "group"):
                     commandsList = parseGroupsList(n, commandsList)
-        print("\\secreflist")
+        f.write(LogStr("\\secreflist"))
         for x in sorted(commandsList):
-            print("\\refitem cfg_%s %s" % (x.lower(), x))
-        print("\\endsecreflist")
+            f.write(LogStr("\\refitem cfg_%s %s" % (x.lower(), x)))
+        f.write(LogStr("\\endsecreflist"))
         # process groups and options
         for n in elem.childNodes:
             if n.nodeType == Node.ELEMENT_NODE:
                 if (n.nodeName == "group"):
-                    parseGroupsDoc(n)
+                    f.write(parseGroupsDoc(n))
         # process footers
         for n in elem.childNodes:
             if n.nodeType == Node.ELEMENT_NODE:
                 if (n.nodeName == "footer"):
-                    parseFooterDoc(n)
+                    f.write(parseFooterDoc(n))
+        f.close()
     elif (sys.argv[1] == "-maph"):
-        print("/* WARNING: This file is generated!")
-        print(" * Do not edit this file, but edit config.xml instead and run")
-        print(" * python configgen.py -map config.xml to regenerate this file!")
-        print(" */")
-        print("#ifndef CONFIGVALUES_H")
-        print("#define CONFIGVALUES_H")
-        print("")
-        print("#include <string>")
-        print("#include <unordered_map>")
-        print("#include \"qcstring.h\"")
-        print("#include \"containers.h\"")
-        print("#include \"settings.h\"")
+        f = open("configvalues.h", "w")
+        f.write(LogStr("/* WARNING: This file is generated!"))
+        f.write(LogStr(" * Do not edit this file, but edit config.xml instead and run"))
+        f.write(LogStr(" * python configgen.py -map config.xml to regenerate this file!"))
+        f.write(LogStr(" */"))
+        f.write(LogStr("#ifndef CONFIGVALUES_H"))
+        f.write(LogStr("#define CONFIGVALUES_H"))
+        f.write(LogStr(""))
+        f.write(LogStr("#include <string>"))
+        f.write(LogStr("#include <unordered_map>"))
+        f.write(LogStr("#include \"qcstring.h\""))
+        f.write(LogStr("#include \"containers.h\""))
+        f.write(LogStr("#include \"settings.h\""))
         for n in elem.childNodes:
             if n.nodeType == Node.ELEMENT_NODE:
                 if n.nodeName == "group":
-                    parseGroupMapEnums(n)
-        print("")
-        print("class ConfigValues")
-        print("{")
-        print("  public:")
-        print("    static ConfigValues &instance() { static ConfigValues theInstance; return theInstance; }")
+                    f.write(parseGroupMapEnums(n))
+        f.write(LogStr(""))
+        f.write(LogStr("class ConfigValues"))
+        f.write(LogStr("{"))
+        f.write(LogStr("  public:"))
+        f.write(LogStr("    static ConfigValues &instance() { static ConfigValues theInstance; return theInstance; }"))
         for n in elem.childNodes:
             if n.nodeType == Node.ELEMENT_NODE:
                 if n.nodeName == "group":
-                    parseGroupMapGetter(n)
+                    f.write(parseGroupMapGetter(n))
         for n in elem.childNodes:
             if n.nodeType == Node.ELEMENT_NODE:
                 if n.nodeName == "group":
-                    parseGroupMapSetter(n)
-        print("    void init();")
-        print("    StringVector fields() const;")
-        print("    struct Info")
-        print("    {")
-        print("      enum Type { Bool, Int, String, List, Unknown };")
-        print("      Info(Type t,bool         ConfigValues::*b) : type(t), value(b) {}")
-        print("      Info(Type t,int          ConfigValues::*i) : type(t), value(i) {}")
-        print("      Info(Type t,QCString     ConfigValues::*s) : type(t), value(s) {}")
-        print("      Info(Type t,StringVector ConfigValues::*l) : type(t), value(l) {}")
-        print("      Type type;")
-        print("      union Item")
-        print("      {")
-        print("        Item(bool         ConfigValues::*v) : b(v) {}")
-        print("        Item(int          ConfigValues::*v) : i(v) {}")
-        print("        Item(QCString     ConfigValues::*v) : s(v) {}")
-        print("        Item(StringVector ConfigValues::*v) : l(v) {}")
-        print("        bool         ConfigValues::*b;")
-        print("        int          ConfigValues::*i;")
-        print("        QCString     ConfigValues::*s;")
-        print("        StringVector ConfigValues::*l;")
-        print("      } value;")
-        print("    };")
-        print("    const Info *get(const QCString &tag) const;")
-        print("  private:")
+                    f.write(parseGroupMapSetter(n))
+        f.write(LogStr("    void init();"))
+        f.write(LogStr("    StringVector fields() const;"))
+        f.write(LogStr("    struct Info"))
+        f.write(LogStr("    {"))
+        f.write(LogStr("      enum Type { Bool, Int, String, List, Unknown };"))
+        f.write(LogStr("      Info(Type t,bool         ConfigValues::*b) : type(t), value(b) {}"))
+        f.write(LogStr("      Info(Type t,int          ConfigValues::*i) : type(t), value(i) {}"))
+        f.write(LogStr("      Info(Type t,QCString     ConfigValues::*s) : type(t), value(s) {}"))
+        f.write(LogStr("      Info(Type t,StringVector ConfigValues::*l) : type(t), value(l) {}"))
+        f.write(LogStr("      Type type;"))
+        f.write(LogStr("      union Item"))
+        f.write(LogStr("      {"))
+        f.write(LogStr("        Item(bool         ConfigValues::*v) : b(v) {}"))
+        f.write(LogStr("        Item(int          ConfigValues::*v) : i(v) {}"))
+        f.write(LogStr("        Item(QCString     ConfigValues::*v) : s(v) {}"))
+        f.write(LogStr("        Item(StringVector ConfigValues::*v) : l(v) {}"))
+        f.write(LogStr("        bool         ConfigValues::*b;"))
+        f.write(LogStr("        int          ConfigValues::*i;"))
+        f.write(LogStr("        QCString     ConfigValues::*s;"))
+        f.write(LogStr("        StringVector ConfigValues::*l;"))
+        f.write(LogStr("      } value;"))
+        f.write(LogStr("    };"))
+        f.write(LogStr("    const Info *get(const QCString &tag) const;"))
+        f.write(LogStr("  private:"))
         for n in elem.childNodes:
             if n.nodeType == Node.ELEMENT_NODE:
                 if (n.nodeName == "group"):
-                    parseGroupMapVar(n)
-        print("};")
-        print("")
-        print("#endif")
+                    f.write(parseGroupMapVar(n))
+        f.write(LogStr("};"))
+        f.write(LogStr(""))
+        f.write(LogStr("#endif"))
+        f.close()
     elif (sys.argv[1] == "-maps"):
-        print("/* WARNING: This file is generated!")
-        print(" * Do not edit this file, but edit config.xml instead and run")
-        print(" * python configgen.py -maps config.xml to regenerate this file!")
-        print(" */")
-        print("#include \"configvalues.h\"")
-        print("#include \"configimpl.h\"")
-        print("#include <unordered_map>")
-        print("")
-        print("const ConfigValues::Info *ConfigValues::get(const QCString &tag) const");
-        print("{");
-        print("  static const std::unordered_map< std::string, Info > configMap =");
-        print("  {");
+        f = open("configvalues.cpp", "w")
+        f.write(LogStr("/* WARNING: This file is generated!"))
+        f.write(LogStr(" * Do not edit this file, but edit config.xml instead and run"))
+        f.write(LogStr(" * python configgen.py -maps config.xml to regenerate this file!"))
+        f.write(LogStr(" */"))
+        f.write(LogStr("#include \"configvalues.h\""))
+        f.write(LogStr("#include \"configimpl.h\""))
+        f.write(LogStr("#include <unordered_map>"))
+        f.write(LogStr(""))
+        f.write(LogStr("const ConfigValues::Info *ConfigValues::get(const QCString &tag) const"))
+        f.write(LogStr("{"))
+        f.write(LogStr("  static const std::unordered_map< std::string, Info > configMap ="))
+        f.write(LogStr("  {"))
         for n in elem.childNodes:
             if n.nodeType == Node.ELEMENT_NODE:
                 if (n.nodeName == "group"):
-                    parseGroupMapInit(n)
-        print("  };");
-        print("  auto it = configMap.find(tag.str());");
-        print("  return it!=configMap.end() ? &it->second : nullptr;");
-        print("}");
-        print("")
-        print("void ConfigValues::init()")
-        print("{")
-        print("  static bool first = TRUE;")
-        print("  if (!first) return;")
-        print("  first = FALSE;")
-        print("")
+                    f.write(parseGroupMapInit(n))
+        f.write(LogStr("  };"))
+        f.write(LogStr("  auto it = configMap.find(tag.str());"))
+        f.write(LogStr("  return it!=configMap.end() ? &it->second : nullptr;"))
+        f.write(LogStr("}"))
+        f.write(LogStr(""))
+        f.write(LogStr("void ConfigValues::init()"))
+        f.write(LogStr("{"))
+        f.write(LogStr("  static bool first = TRUE;"))
+        f.write(LogStr("  if (!first) return;"))
+        f.write(LogStr("  first = FALSE;"))
+        f.write(LogStr(""))
         for n in elem.childNodes:
             if n.nodeType == Node.ELEMENT_NODE:
                 if (n.nodeName == "group"):
-                    parseGroupInit(n)
-        print("}")
-        print("")
-        print("StringVector ConfigValues::fields() const")
-        print("{")
-        print("  return {");
+                    f.write(parseGroupInit(n))
+        f.write(LogStr("}"))
+        f.write(LogStr(""))
+        f.write(LogStr("StringVector ConfigValues::fields() const"))
+        f.write(LogStr("{"))
+        f.write(LogStr("  return {"));
         first=True
         for n in elem.childNodes:
             if n.nodeType == Node.ELEMENT_NODE:
@@ -837,60 +875,64 @@ def main():
                             type = c.getAttribute('type')
                             if type!='obsolete':
                                 if not first:
-                                    print(",")
+                                    f.write(LogStr(","))
                                 first=False
                                 sys.stdout.write('    "'+name+'"')
-        print("")
-        print("  };")
-        print("}")
+        f.write(LogStr(""))
+        f.write(LogStr("  };"))
+        f.write(LogStr("}"))
     elif (sys.argv[1] == "-cpp"):
-        print("/* WARNING: This file is generated!")
-        print(" * Do not edit this file, but edit config.xml instead and run")
-        print(" * python configgen.py -cpp config.xml to regenerate this file!")
-        print(" */")
-        print("")
-        print("#include \"configoptions.h\"")
-        print("#include \"configimpl.h\"")
-        print("#include \"portable.h\"")
-        print("#include \"settings.h\"")
-        print("")
-        print("void addConfigOptions(ConfigImpl *cfg)")
-        print("{")
-        print("  ConfigString *cs;")
-        print("  ConfigEnum   *ce;")
-        print("  ConfigList   *cl;")
-        print("  ConfigInt    *ci;")
-        print("  ConfigBool   *cb;")
-        print("")
+        f = open("misc.h", "w");
+        f.write(LogStr("/* WARNING: This file is generated!"))
+        f.write(LogStr(" * Do not edit this file, but edit config.xml instead and run"))
+        f.write(LogStr(" * python configgen.py -cpp config.xml to regenerate this file!"))
+        f.write(LogStr(" */"))
+        f.write(LogStr(""))
+        f.write(LogStr("#include \"configoptions.h\""))
+        f.write(LogStr("#include \"configimpl.h\""))
+        f.write(LogStr("#include \"portable.h\""))
+        f.write(LogStr("#include \"settings.h\""))
+        f.write(LogStr(""))
+        f.write(LogStr("void addConfigOptions(ConfigImpl *cfg)"))
+        f.write(LogStr("{"))
+        f.write(LogStr("  ConfigString *cs;"))
+        f.write(LogStr("  ConfigEnum   *ce;"))
+        f.write(LogStr("  ConfigList   *cl;"))
+        f.write(LogStr("  ConfigInt    *ci;"))
+        f.write(LogStr("  ConfigBool   *cb;"))
+        f.write(LogStr(""))
         # process header
         for n in elem.childNodes:
             if n.nodeType == Node.ELEMENT_NODE:
                 if (n.nodeName == "header"):
-                    parseHeader(n,'cfg')
+                    f.write(LogStr(parseHeader(n,'cfg')))
         for n in elem.childNodes:
             if n.nodeType == Node.ELEMENT_NODE:
                 if (n.nodeName == "group"):
-                    parseGroups(n)
-        print("}")
+                    f.write(LogStr(parseGroups(n)))
+        f.write(LogStr("}"))
+        f.close()
     elif (sys.argv[1] == "-wiz"):
-        print("/* WARNING: This file is generated!")
-        print(" * Do not edit this file, but edit config.xml instead and run")
-        print(" * python configgen.py -wiz config.xml to regenerate this file!")
-        print(" */")
-        print("#include \"configdoc.h\"")
-        print("#include \"docintf.h\"")
-        print("")
-        print("void addConfigDocs(DocIntf *doc)")
-        print("{")
+        f = open("settings.h", "w")
+        f.write(LogStr("/* WARNING: This file is generated!"))
+        f.write(LogStr(" * Do not edit this file, but edit config.xml instead and run"))
+        f.write(LogStr(" * python configgen.py -wiz config.xml to regenerate this file!"))
+        f.write(LogStr(" */"))
+        f.write(LogStr("#include \"configdoc.h\""))
+        f.write(LogStr("#include \"docintf.h\""))
+        f.write(LogStr(""))
+        f.write(LogStr("void addConfigDocs(DocIntf *doc)"))
+        f.write(LogStr("{"))
         for n in elem.childNodes:
             if n.nodeType == Node.ELEMENT_NODE:
                 if (n.nodeName == "header"):
-                    parseHeader(n,'doc')
+                    f.write(parseHeader(n,'doc'))
         for n in elem.childNodes:
             if n.nodeType == Node.ELEMENT_NODE:
                 if (n.nodeName == "group"):
-                    parseGroupCDocs(n)
-        print("}")
+                    f.write(parseGroupCDocs(n))
+        f.write(LogStr("}"))
+        f.close()
 
 if __name__ == '__main__':
     main()
